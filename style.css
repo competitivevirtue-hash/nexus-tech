@@ -294,72 +294,42 @@ nav a.active {
     }
 }
 
-.video-frame-container {
-    background-color: #000000;
-    border: 1px solid var(--border-light);
+.editorial-banner-card {
+    background: linear-gradient(135deg, var(--google-blue) 0%, #1a73e8 100%);
+    color: #ffffff;
+    padding: 3rem 2rem;
     border-radius: 8px;
-    overflow: hidden;
-}
-
-.video-aspect-ratio {
+    border: 1px solid var(--border-light);
+    margin-bottom: 2rem;
     position: relative;
-    padding-top: 56.25%;
-    width: 100%;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
-.video-placeholder {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(135deg, #f1f3f4 0%, #e8eaed 100%);
-    cursor: pointer;
-}
-
-.video-play-btn {
-    width: 70px;
-    height: 70px;
-    background-color: var(--google-red);
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+.editorial-banner-card .category-tag {
+    color: #202124 !important;
+    background-color: var(--google-yellow) !important;
+    font-weight: 700;
     margin-bottom: 1rem;
-    box-shadow: 0 4px 10px rgba(234, 67, 53, 0.3);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: inline-block;
 }
 
-.video-placeholder:hover .video-play-btn {
-    transform: scale(1.08);
-    box-shadow: 0 6px 15px rgba(234, 67, 53, 0.5);
-}
-
-.video-play-btn::before {
-    content: "";
-    width: 0;
-    height: 0;
-    border-top: 10px solid transparent;
-    border-bottom: 10px solid transparent;
-    border-left: 18px solid #ffffff;
-    margin-left: 4px;
-}
-
-.video-info {
-    background-color: var(--bg-light);
-    padding: 1.5rem;
-    color: var(--text-primary);
-}
-
-.video-info h2 {
-    font-size: 1.8rem;
+.editorial-banner-card h2 {
+    font-size: 2.2rem;
     font-weight: 800;
-    margin-top: 0.75rem;
-    margin-bottom: 0.5rem;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    color: #ffffff;
+}
+
+.editorial-banner-card p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    opacity: 0.95;
+    max-width: 800px;
+    margin-bottom: 1.5rem;
+    color: #ffffff;
 }
 
 .game-reviews-list {

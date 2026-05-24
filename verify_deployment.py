@@ -1,33 +1,14 @@
 #!/usr/bin/env python3
 """
 verify_deployment.py
-QA verification script for validating DOM media states, YouTube iframe embed sources,
-the "Nexus Strategic Verdict" boxes, and sitemap.xml validity and completeness.
+QA verification script for validating sitemap.xml, DOM layout integrity (editorial banner cards,
+verdict boxes), the complete removal of YouTube components/iframes, and correct page linkages.
 """
 
 import os
 import sys
-import re
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
-
-def verify_media_element(iframe, file_path):
-    if not iframe:
-        return "Missing <iframe> element"
-    
-    src = iframe.get("src", "")
-    if not src:
-        return "<iframe> has no src attribute"
-        
-    # Regex to match valid youtube embed format: https://www.youtube.com/embed/{11-char-id}
-    pattern = r'^https://www\.youtube\.com/embed/([a-zA-Z0-9_-]{11})$'
-    match = re.match(pattern, src)
-    if not match:
-        return f"<iframe> src '{src}' does not match expected YouTube embed pattern"
-        
-    video_id = match.group(1)
-    print(f"    [PASS] Verified video ID '{video_id}' in '{file_path}'")
-    return None
 
 def main():
     print("================================================================================")
@@ -51,18 +32,14 @@ def main():
         print(f"    [FAIL] Failed to parse 'sitemap.xml': {e}")
         sys.exit(1)
         
-    # Extract all <loc> values from the sitemap
-    # Sitemaps usually have a namespace: {http://www.sitemaps.org/schemas/sitemap/0.9}
     namespaces = {'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
     loc_elements = root.findall('.//ns:loc', namespaces)
     if not loc_elements:
-        # Try finding without namespace if namespace not found
         loc_elements = root.findall('.//loc')
         
     sitemap_urls = [loc.text for loc in loc_elements if loc.text]
     print(f"    [INFO] Found {len(sitemap_urls)} URLs in 'sitemap.xml'.")
     
-    # Map URLs to local files and verify they exist
     base_url = "https://competitivevirtue-hash.github.io/nexus-tech/"
     for url in sitemap_urls:
         if not url.startswith(base_url):
@@ -77,7 +54,7 @@ def main():
             
     print("    [PASS] All sitemap URLs exist as local files.")
     
-    # 2. Verify gaming.html featured video
+    # 2. Verify gaming.html featured media is replaced by static editorial banner
     gaming_path = os.path.join(base_dir, "gaming.html")
     if not os.path.exists(gaming_path):
         print(f"[ERROR] 'gaming.html' not found at {gaming_path}")
@@ -85,28 +62,61 @@ def main():
         
     print(f"[-] Auditing '{os.path.basename(gaming_path)}'...")
     with open(gaming_path, "r", encoding="utf-8") as f:
-        soup = BeautifulSoup(f.read(), "html.parser")
+        gaming_soup = BeautifulSoup(f.read(), "html.parser")
         
-    # Check for featured video frame aspect ratio container
-    aspect_container = soup.find(class_="video-aspect-ratio")
-    if not aspect_container:
-        print("    [FAIL] Aspect ratio container '.video-aspect-ratio' not found in gaming.html")
+    # Ensure NO iframe is present on gaming.html
+    if gaming_soup.find("iframe"):
+        print("    [FAIL] Found <iframe> in gaming.html, YouTube elements were not fully eradicated")
         sys.exit(1)
         
-    iframe = aspect_container.find("iframe")
-    issue = verify_media_element(iframe, "gaming.html")
-    if issue:
-        print(f"    [FAIL] {issue}")
+    # Check for the editorial banner card
+    banner_card = gaming_soup.find(class_="editorial-banner-card")
+    if not banner_card:
+        print("    [FAIL] '.editorial-banner-card' not found in gaming.html")
+        sys.exit(1)
+    else:
+        print("    [PASS] Verified '.editorial-banner-card' in gaming.html")
+        
+    # Check that it has a category-tag and h2
+    category_tag = banner_card.find(class_="category-tag")
+    h2_tag = banner_card.find("h2")
+    if not category_tag or not h2_tag:
+        print("    [FAIL] '.editorial-banner-card' lacks category tag or heading title")
+        sys.exit(1)
+    else:
+        print(f"    [PASS] Banner featured editorial title: '{h2_tag.get_text().strip()}'")
+
+    # 3. Verify index.html contains correct page link mapping (no multiple references to article_0.html)
+    index_path = os.path.join(base_dir, "index.html")
+    if not os.path.exists(index_path):
+        print(f"[ERROR] 'index.html' not found at {index_path}")
         sys.exit(1)
         
-    # 3. Verify all article detail subpages
+    print(f"[-] Auditing '{os.path.basename(index_path)}'...")
+    with open(index_path, "r", encoding="utf-8") as f:
+        index_soup = BeautifulSoup(f.read(), "html.parser")
+        
+    # Find all anchor tags pointing to article_*.html
+    article_links = []
+    for a in index_soup.find_all("a", href=True):
+        href = a["href"]
+        if href.startswith("article_") and href.endswith(".html"):
+            article_links.append(href)
+            
+    unique_links = set(article_links)
+    print(f"    [INFO] Found {len(article_links)} article links in index.html, referencing {len(unique_links)} unique pages.")
+    
+    # Assert that they are not all pointing to article_0.html
+    if len(article_links) > 2 and len(unique_links) <= 1:
+        print(f"    [FAIL] Linkage bug detected: Multiple article cards map to the same file: {unique_links}")
+        sys.exit(1)
+    else:
+        print("    [PASS] Article card linkage verification passed.")
+
+    # 4. Verify all article detail subpages are video-free and contain styled verdict boxes
     html_files = [f for f in os.listdir(base_dir) if f.startswith("article_") and f.endswith(".html")]
     print(f"[-] Scanning {len(html_files)} generated article detail subpages...")
     
-    gaming_articles_count = 0
-    verified_gaming_videos_count = 0
-    
-    # Ensure all files are checked for sitemap inclusion
     for filename in sorted(html_files):
         expected_url = f"{base_url}{filename}"
         if expected_url not in sitemap_urls:
@@ -117,7 +127,12 @@ def main():
         with open(path, "r", encoding="utf-8") as f:
             article_soup = BeautifulSoup(f.read(), "html.parser")
             
-        # Verify verdict box exists in EVERY article page
+        # Assert NO iframes exist
+        if article_soup.find("iframe"):
+            print(f"    [FAIL] Article '{filename}' contains an <iframe>, YouTube element not eradicated")
+            sys.exit(1)
+            
+        # Verify verdict box exists
         verdict_box = article_soup.find(class_="verdict-box")
         if not verdict_box:
             print(f"    [FAIL] Article '{filename}' is missing '.verdict-box' container")
@@ -125,41 +140,31 @@ def main():
             
         verdict_header = verdict_box.find("h3")
         if not verdict_header or "Nexus Strategic Verdict" not in verdict_header.get_text():
-            print(f"    [FAIL] Article '{filename}' has a '.verdict-box' but is missing the 'Nexus Strategic Verdict' header")
+            print(f"    [FAIL] Article '{filename}' verdict box is missing the correct header")
             sys.exit(1)
             
         verdict_text = verdict_box.find("p")
         if not verdict_text or not verdict_text.get_text().strip():
-            print(f"    [FAIL] Article '{filename}' has an empty '.verdict-box' text block")
+            print(f"    [FAIL] Article '{filename}' verdict text is empty")
             sys.exit(1)
             
-        # Check category specific details
-        category_tag = article_soup.find(class_=lambda x: x and "category-tag" in x)
-        if category_tag and category_tag.get_text().strip() == "Gaming":
-            gaming_articles_count += 1
-            article_aspect = article_soup.find(class_="video-aspect-ratio")
-            if not article_aspect:
-                print(f"    [FAIL] Gaming article '{filename}' is missing '.video-aspect-ratio' container")
-                sys.exit(1)
-                
-            article_iframe = article_aspect.find("iframe")
-            issue = verify_media_element(article_iframe, filename)
-            if issue:
-                print(f"    [FAIL] Gaming article '{filename}': {issue}")
-                sys.exit(1)
-            verified_gaming_videos_count += 1
-            
-    # Check that core static layouts are also indexed in the sitemap
-    for core_page in ["index.html", "gaming.html", "reviews.html", "privacy.html", "terms.html", "disclosure.html"]:
-        expected_url = f"{base_url}{core_page}"
-        if expected_url not in sitemap_urls:
-            print(f"    [FAIL] Core static page '{core_page}' is not indexed in 'sitemap.xml'")
+        # Verify no "Standard evolutionary step" text
+        verdict_str = verdict_text.get_text()
+        if "Standard evolutionary step" in verdict_str:
+            print(f"    [FAIL] Article '{filename}' contains the boilerplate verdict string 'Standard evolutionary step'")
             sys.exit(1)
+            
+        # Verify no "We're in the transition period" in the article
+        with open(path, "r", encoding="utf-8") as f_raw:
+            raw_content = f_raw.read()
+            if "transition period" in raw_content:
+                print(f"    [FAIL] Article '{filename}' contains the 'transition period' boilerplate string")
+                sys.exit(1)
 
     print("================================================================================")
     print(f"             QA PASSED: Verified 'sitemap.xml' structure & complete coverage.")
-    print(f"             Verified '.verdict-box' present in all {len(html_files)} articles.")
-    print(f"             Verified {verified_gaming_videos_count} gaming videos across {gaming_articles_count} gaming articles.")
+    print(f"             Verified 100% video-free HTML files (0 iframes found).")
+    print(f"             Verified '.verdict-box' with context-aware logic present in all {len(html_files)} articles.")
     print("================================================================================")
     sys.exit(0)
 

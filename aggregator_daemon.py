@@ -167,96 +167,7 @@ def clean_html(text):
     clean = re.compile('<.*?>')
     return re.sub(clean, '', text).strip()
 
-EVERGREEN_TRAILERS = [
-    "Lq594XqynZ4",  # GTA VI Official Trailer 1
-    "UuxR45XlR4U",  # Cyberpunk 2077 Official Cinematic Trailer
-    "H2EC4t9z-H0",  # Elden Ring Official Gameplay Reveal
-    "OtSE6-N-wSw",  # Hades II Official Trailer
-    "K3dbaB9hcDM",  # Marvel's Spider-Man 2 Gameplay Trailer
-    "f3Vw4j2cQ9w",  # God of War Ragnarök Trailer
-    "hvoD7ehJnVc",  # Zelda: Tears of the Kingdom Official Trailer
-    "eaW0tYpxyp0",  # Death Stranding 2 Trailer
-    "X8zLJlU_-60",  # Ghost of Yōtei Announce Trailer
-    "4HPrC0_M64M"   # GTA V Official Next-Gen Trailer
-]
-
-def extract_youtube_video_id(url):
-    if not url:
-        return None
-    patterns = [
-        r'v=([a-zA-Z0-9_-]{11})',
-        r'youtu\.be/([a-zA-Z0-9_-]{11})',
-        r'embed/([a-zA-Z0-9_-]{11})'
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-    return None
-
-def get_evergreen_fallback_video_id(story_title):
-    idx = hash(story_title or "") % len(EVERGREEN_TRAILERS)
-    return EVERGREEN_TRAILERS[idx]
-
-def validate_and_get_video_id(video_id, story_title):
-    if not video_id or not isinstance(video_id, str) or len(video_id) != 11 or not re.match(r'^[a-zA-Z0-9_-]{11}$', video_id):
-        return get_evergreen_fallback_video_id(story_title)
-    return video_id
-
-def sanitize_search_query(query):
-    query_clean = re.sub(r'\b(?:patch|update|v|ver\.?)\s*\d+(?:\.\d+)*\b', '', query, flags=re.IGNORECASE)
-    query_clean = re.sub(r'[^a-zA-Z0-9\s]', ' ', query_clean)
-    filler_words = ["release notes", "performance calibration", "discussion thread", "week beginning", "discord", "mod", "leaked on", "gets a whole new ending", "resurrected a cut police gunship"]
-    for word in filler_words:
-        query_clean = re.sub(r'\b' + re.escape(word) + r'\b', '', query_clean, flags=re.IGNORECASE)
-    franchises = ["cyberpunk", "gta", "grand theft auto", "elden ring", "zelda", "hades", "spider-man", "god of war", "batman", "dragon quest", "007"]
-    query_lower = query_clean.lower()
-    for franchise in franchises:
-        if franchise in query_lower:
-            return f"{franchise} official trailer"
-    words = [w for w in query_clean.split() if w]
-    if len(words) > 3:
-        query_clean = " ".join(words[:3])
-    else:
-        query_clean = " ".join(words)
-    return f"{query_clean} official trailer"
-
-def fetch_fallback_youtube_video(query):
-    import urllib.parse
-    sanitized = sanitize_search_query(query)
-    print(f"[-] Aggregator: Fetching fallback YouTube video for query: '{sanitized}'...")
-    try:
-        url = f"https://www.youtube.com/feeds/videos.xml?search_query={urllib.parse.quote(sanitized)}"
-        resp = requests.get(url, headers=get_headers(), timeout=10)
-        if resp.status_code == 200:
-            root = ET.fromstring(resp.content)
-            ns = "{http://www.w3.org/2005/Atom}"
-            yt_ns = "{http://www.youtube.com/xml/schemas/2015}"
-            entry = root.find(f"{ns}entry")
-            if entry is not None:
-                video_id_el = entry.find(f"{yt_ns}videoId")
-                if video_id_el is not None and video_id_el.text:
-                    return video_id_el.text
-                link_el = entry.find(f"{ns}link")
-                if link_el is not None:
-                    href = link_el.attrib.get("href", "")
-                    video_id = extract_youtube_video_id(href)
-                    if video_id:
-                        return video_id
-    except Exception as e:
-        print(f"    [!] Fallback search failed: {e}")
-    return get_evergreen_fallback_video_id(sanitized)
-
-def get_youtube_video_id_for_story(story):
-    if not story:
-        return EVERGREEN_TRAILERS[0]
-    title = story.get("title", "")
-    video_id = story.get("video_id")
-    if not video_id:
-        video_id = extract_youtube_video_id(story.get("link", ""))
-    if not video_id:
-        video_id = fetch_fallback_youtube_video(title)
-    return validate_and_get_video_id(video_id, title)
+# --- FEED INGESTION PIPELINES ---
 
 def fetch_techcrunch_feed():
     url = "https://techcrunch.com/feed/"
@@ -269,56 +180,47 @@ def fetch_techcrunch_feed():
             channel = root.find("channel")
             items = channel.findall("item") if channel is not None else []
             for item in items[:6]:
-                title = item.find("title").text if (item.find("title") is not None and item.find("title").text) else "Breaking Tech Story"
-                link = item.find("link").text if (item.find("link") is not None and item.find("link").text) else "#"
-                desc = item.find("description").text if (item.find("description") is not None and item.find("description").text) else ""
-                desc_cleaned = clean_html(desc)[:180] + "..." if desc else "Read the full scoop on TechCrunch."
-                pub_date = item.find("pubDate").text if item.find("pubDate") is not None else "May 24, 2026"
-                pub_date = pub_date.split(" +")[0] if " +" in pub_date else pub_date
-                
-                articles.append({
-                    "title": title,
-                    "link": link,
-                    "summary": desc_cleaned,
-                    "date": pub_date,
-                    "category": "Computing" if len(articles) % 2 == 0 else "Hardware"
-                })
+                try:
+                    title_el = item.find("title")
+                    link_el = item.find("link")
+                    desc_el = item.find("description")
+                    pub_date_el = item.find("pubDate")
+                    
+                    if title_el is None or not title_el.text or link_el is None or not link_el.text:
+                        continue
+                        
+                    title = title_el.text
+                    link = link_el.text
+                    desc = desc_el.text if desc_el is not None else ""
+                    desc_cleaned = clean_html(desc)
+                    if not desc_cleaned:
+                        continue
+                        
+                    # Skip transition period placeholders
+                    if "transition period" in title.lower() or "transition period" in desc_cleaned.lower():
+                        continue
+                        
+                    desc_cleaned = desc_cleaned[:180] + "..." if len(desc_cleaned) > 180 else desc_cleaned
+                    
+                    pub_date = pub_date_el.text if pub_date_el is not None else "May 24, 2026"
+                    pub_date = pub_date.split(" +")[0] if " +" in pub_date else pub_date
+                    
+                    articles.append({
+                        "title": title,
+                        "link": link,
+                        "summary": desc_cleaned,
+                        "date": pub_date,
+                        "category": "Computing" if len(articles) % 2 == 0 else "Hardware"
+                    })
+                except Exception as e:
+                    print(f"      [!] Skipping single TechCrunch item due to parse error: {e}")
+                    continue
             if len(articles) > 0:
                 print(f"    [+] Successfully aggregated {len(articles)} articles from TechCrunch.")
                 return articles
     except Exception as e:
-        print(f"    [!] TechCrunch feed failed: {e}. Launching fallbacks.")
-        
-    return [
-        {
-            "title": "Quantum Interlinks Go Live in Sub-2nm Computing Core Centers",
-            "link": "https://techcrunch.com/quantum-interlinks-core",
-            "summary": "High-throughput light-based optical channels successfully integrated on next-generation computing substrates, bypassing copper interconnect limits.",
-            "date": "Sun, 24 May 2026 14:12:00",
-            "category": "Computing"
-        },
-        {
-            "title": "Silicon Giants Announce Modular Sub-Surface Liquid Cooling Units",
-            "link": "https://techcrunch.com/modular-liquid-cooling",
-            "summary": "A breakthrough structural design integrates microscopic channels directly onto the silicon wafer, solving thermal throttling for macro models.",
-            "date": "Sun, 24 May 2026 12:45:00",
-            "category": "Hardware"
-        },
-        {
-            "title": "Clean Grid Power Routing Algorithms Awarded Key Patents",
-            "link": "https://techcrunch.com/grid-power-routing-patents",
-            "summary": "The USPTO awards patent approvals for dynamic AI-directed utility distribution, yielding a 15% efficiency boost across regional power nodes.",
-            "date": "Sat, 23 May 2026 18:22:00",
-            "category": "Computing"
-        },
-        {
-            "title": "Next-Gen Mobile GPU Architecture Doubles Ray-Tracing Efficiency",
-            "link": "https://techcrunch.com/next-gen-mobile-gpu-efficiency",
-            "summary": "Vibrant hardware rendering units combine neural predictions and rasterization blocks, dropping battery drain on intense gaming workloads.",
-            "date": "Sat, 23 May 2026 09:15:00",
-            "category": "Hardware"
-        }
-    ]
+        print(f"    [!] TechCrunch feed failed: {e}.")
+    return []
 
 def fetch_sec_feed():
     url = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=include&start=0&count=100&output=atom"
@@ -330,49 +232,50 @@ def fetch_sec_feed():
             root = ET.fromstring(resp.content)
             entries = root.findall('{http://www.w3.org/2005/Atom}entry')
             for entry in entries[:4]:
-                title = entry.find('{http://www.w3.org/2005/Atom}title')
-                title_text = title.text if (title is not None and title.text) else "SEC Form 4 Filing"
-                # Strip common prefixes to avoid issues like "flows at 4"
-                temp_title = title_text
-                for prefix in ["Form 4 - ", "4 - "]:
-                    if temp_title.startswith(prefix):
-                        temp_title = temp_title[len(prefix):]
-                clean_title = temp_title.split(" - ")[0]
-                link_el = entry.find('{http://www.w3.org/2005/Atom}link')
-                link = link_el.attrib.get("href") if (link_el is not None and link_el.attrib.get("href")) else "#"
-                summary = entry.find('{http://www.w3.org/2005/Atom}summary')
-                summary_text = summary.text if summary is not None else ""
-                summary_cleaned = clean_html(summary_text)[:120] + "..." if summary_text else "Institutional Form 4 transaction."
-                
-                filings.append({
-                    "title": f"SEC Alert: Corporate Insider flows at {clean_title}",
-                    "link": link,
-                    "summary": summary_cleaned,
-                    "date": "May 24, 2026",
-                    "category": "Fintech"
-                })
+                try:
+                    title_el = entry.find('{http://www.w3.org/2005/Atom}title')
+                    link_el = entry.find('{http://www.w3.org/2005/Atom}link')
+                    summary_el = entry.find('{http://www.w3.org/2005/Atom}summary')
+                    
+                    if title_el is None or not title_el.text or link_el is None:
+                        continue
+                        
+                    title_text = title_el.text
+                    temp_title = title_text
+                    for prefix in ["Form 4 - ", "4 - "]:
+                        if temp_title.startswith(prefix):
+                            temp_title = temp_title[len(prefix):]
+                    clean_title = temp_title.split(" - ")[0]
+                    link = link_el.attrib.get("href")
+                    if not link:
+                        continue
+                        
+                    summary_text = summary_el.text if summary_el is not None else ""
+                    summary_cleaned = clean_html(summary_text)
+                    if not summary_cleaned:
+                        continue
+                        
+                    if "transition period" in title_text.lower() or "transition period" in summary_cleaned.lower():
+                        continue
+                        
+                    summary_cleaned = summary_cleaned[:120] + "..." if len(summary_cleaned) > 120 else summary_cleaned
+                    
+                    filings.append({
+                        "title": f"SEC Alert: Corporate Insider flows at {clean_title}",
+                        "link": link,
+                        "summary": summary_cleaned,
+                        "date": "May 24, 2026",
+                        "category": "Fintech"
+                    })
+                except Exception as e:
+                    print(f"      [!] Skipping single SEC item due to parse error: {e}")
+                    continue
             if len(filings) > 0:
                 print(f"    [+] Successfully harvested {len(filings)} filings from SEC.")
                 return filings
     except Exception as e:
-        print(f"    [!] SEC EDGAR feed failed: {e}. Launching alerts.")
-        
-    return [
-        {
-            "title": "SEC Alert: Corporate Insider block reallocations at Berkshire Hathaway",
-            "link": "https://www.sec.gov/cgi-bin/browse-edgar",
-            "summary": "Filing indicates massive options executions and block liquidations inside technology and consumer segments.",
-            "date": "May 24, 2026",
-            "category": "Fintech"
-        },
-        {
-            "title": "SEC Alert: Institutional Form 4 transactions at CD Projekt Group",
-            "link": "https://www.sec.gov/cgi-bin/browse-edgar",
-            "summary": "Large options exercises registered for gaming segment executives, aligned with Q2 project timeline reviews.",
-            "date": "May 23, 2026",
-            "category": "Fintech"
-        }
-    ]
+        print(f"    [!] SEC EDGAR feed failed: {e}.")
+    return []
 
 def fetch_steam_feed():
     url = "https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=1091500&count=3"
@@ -384,32 +287,39 @@ def fetch_steam_feed():
             data = resp.json()
             newsitems = data.get("appnews", {}).get("newsitems", [])
             for item in newsitems:
-                title = item.get("title", "Steam Developer Update")
-                link = item.get("url", "#")
-                contents = item.get("contents", "")
-                contents_cleaned = clean_html(contents)[:180] + "..." if contents else "Read the full developer log on Steam."
-                articles.append({
-                    "title": f"Steam Update: {title}",
-                    "link": link,
-                    "summary": contents_cleaned,
-                    "date": "May 24, 2026",
-                    "category": "Gaming"
-                })
+                try:
+                    title = item.get("title")
+                    link = item.get("url")
+                    contents = item.get("contents")
+                    
+                    if not title or not link or not contents:
+                        continue
+                        
+                    contents_cleaned = clean_html(contents)
+                    if not contents_cleaned:
+                        continue
+                        
+                    if "transition period" in title.lower() or "transition period" in contents_cleaned.lower():
+                        continue
+                        
+                    contents_cleaned = contents_cleaned[:180] + "..." if len(contents_cleaned) > 180 else contents_cleaned
+                    
+                    articles.append({
+                        "title": f"Steam Update: {title}",
+                        "link": link,
+                        "summary": contents_cleaned,
+                        "date": "May 24, 2026",
+                        "category": "Gaming"
+                    })
+                except Exception as e:
+                    print(f"      [!] Skipping single Steam item due to parse error: {e}")
+                    continue
             if len(articles) > 0:
                 print(f"    [+] Successfully aggregated {len(articles)} articles from Steam.")
                 return articles
     except Exception as e:
-        print(f"    [!] Steam Web API feed failed: {e}. Launching fallbacks.")
-        
-    return [
-        {
-            "title": "Steam Update: Cyberpunk 2078 Patch 2.15 Release Notes & Performance Calibration",
-            "link": "https://store.steampowered.com/news/app/1091500",
-            "summary": "CD Projekt Red releases Patch 2.15, resolving memory allocation leaks on next-generation architectures, optimizing RTX Ray Reconstruction, and adding sub-surface fluid physics.",
-            "date": "May 24, 2026",
-            "category": "Gaming"
-        }
-    ]
+        print(f"    [!] Steam Web API feed failed: {e}.")
+    return []
 
 def fetch_reddit_feed():
     url = "https://www.reddit.com/r/GamingLeaksAndRumours/.json?limit=5"
@@ -423,13 +333,25 @@ def fetch_reddit_feed():
             data = resp.json()
             children = data.get("data", {}).get("children", [])
             for child in children:
-                post = child.get("data", {})
-                if post.get("is_self") or post.get("selftext"):
-                    title = post.get("title", "Reddit Gaming Insider")
-                    permalink = post.get("permalink", "")
-                    link = f"https://www.reddit.com{permalink}" if permalink else "#"
-                    selftext = post.get("selftext", "")
-                    summary = clean_html(selftext)[:180] + "..." if selftext else "Reddit gaming community insider discussion."
+                try:
+                    post = child.get("data", {})
+                    title = post.get("title")
+                    permalink = post.get("permalink")
+                    selftext = post.get("selftext")
+                    
+                    if not title or not permalink or not selftext:
+                        continue
+                        
+                    link = f"https://www.reddit.com{permalink}"
+                    summary = clean_html(selftext)
+                    if not summary:
+                        continue
+                        
+                    if "transition period" in title.lower() or "transition period" in summary.lower():
+                        continue
+                        
+                    summary = summary[:180] + "..." if len(summary) > 180 else summary
+                    
                     articles.append({
                         "title": f"Gaming Rumor: {title}",
                         "link": link,
@@ -437,21 +359,15 @@ def fetch_reddit_feed():
                         "date": "May 24, 2026",
                         "category": "Gaming"
                     })
+                except Exception as e:
+                    print(f"      [!] Skipping single Reddit item due to parse error: {e}")
+                    continue
             if len(articles) > 0:
                 print(f"    [+] Successfully aggregated {len(articles)} articles from Reddit.")
                 return articles
     except Exception as e:
-        print(f"    [!] Reddit JSON feed failed: {e}. Launching fallbacks.")
-        
-    return [
-        {
-            "title": "Gaming Rumor: GTA VI Next Trailer Date Leak Surfaces from Publisher Database",
-            "link": "https://www.reddit.com/r/GamingLeaksAndRumours/",
-            "summary": "Internal publishing logs indicate a second major cinematic trailer for GTA VI is scheduled for distribution next week, highlighting metropolitan physics and sub-surface ray tracing.",
-            "date": "May 24, 2026",
-            "category": "Gaming"
-        }
-    ]
+        print(f"    [!] Reddit JSON feed failed: {e}.")
+    return []
 
 def fetch_wccftech_feed():
     url = "https://wccftech.com/category/games/feed/"
@@ -464,80 +380,41 @@ def fetch_wccftech_feed():
             channel = root.find("channel")
             items = channel.findall("item") if channel is not None else []
             for item in items[:4]:
-                title = item.find("title").text if (item.find("title") is not None and item.find("title").text) else "Gaming Industry Update"
-                link = item.find("link").text if (item.find("link") is not None and item.find("link").text) else "#"
-                desc = item.find("description").text if (item.find("description") is not None and item.find("description").text) else ""
-                desc_cleaned = clean_html(desc)[:180] + "..." if desc else "Read the full coverage on Wccftech."
-                articles.append({
-                    "title": f"Industry News: {title}",
-                    "link": link,
-                    "summary": desc_cleaned,
-                    "date": "May 24, 2026",
-                    "category": "Gaming"
-                })
+                try:
+                    title_el = item.find("title")
+                    link_el = item.find("link")
+                    desc_el = item.find("description")
+                    
+                    if title_el is None or not title_el.text or link_el is None or not link_el.text:
+                        continue
+                        
+                    title = title_el.text
+                    link = link_el.text
+                    desc = desc_el.text if desc_el is not None else ""
+                    desc_cleaned = clean_html(desc)
+                    if not desc_cleaned:
+                        continue
+                        
+                    if "transition period" in title.lower() or "transition period" in desc_cleaned.lower():
+                        continue
+                        
+                    desc_cleaned = desc_cleaned[:180] + "..." if len(desc_cleaned) > 180 else desc_cleaned
+                    articles.append({
+                        "title": f"Industry News: {title}",
+                        "link": link,
+                        "summary": desc_cleaned,
+                        "date": "May 24, 2026",
+                        "category": "Gaming"
+                    })
+                except Exception as e:
+                    print(f"      [!] Skipping single Wccftech item due to parse error: {e}")
+                    continue
             if len(articles) > 0:
                 print(f"    [+] Successfully aggregated {len(articles)} articles from Wccftech.")
                 return articles
     except Exception as e:
-        print(f"    [!] Wccftech Games feed failed: {e}. Launching fallbacks.")
-        
-    return [
-        {
-            "title": "Industry News: Next-Gen Console Showcase Dates Finalized for June",
-            "link": "https://wccftech.com/next-gen-console-showcase-dates",
-            "summary": "Major platform holders align broadcast schedules for Q2 showcase events. Expect first look at modular graphics rendering chips and next-gen gaming technologies.",
-            "date": "May 24, 2026",
-            "category": "Gaming"
-        }
-    ]
-
-def fetch_youtube_feed():
-    url = "https://www.youtube.com/feeds/videos.xml?channel_id=UCy1Ms_5qB0Gx-C8GDJkRQAw"
-    print("[-] Aggregator: Fetching YouTube Creator XML feed...")
-    articles = []
-    try:
-        resp = requests.get(url, headers=get_headers(), timeout=10)
-        if resp.status_code == 200:
-            root = ET.fromstring(resp.content)
-            ns = "{http://www.w3.org/2005/Atom}"
-            entries = root.findall(f"{ns}entry")
-            for entry in entries[:3]:
-                title_el = entry.find(f"{ns}title")
-                title = title_el.text if (title_el is not None and title_el.text) else "YouTube Gaming Video"
-                link_el = entry.find(f"{ns}link")
-                link = link_el.attrib.get("href") if link_el is not None else "#"
-                
-                # Extract video ID
-                yt_ns = "{http://www.youtube.com/xml/schemas/2015}"
-                video_id_el = entry.find(f"{yt_ns}videoId")
-                video_id = video_id_el.text if video_id_el is not None else None
-                if not video_id:
-                    video_id = extract_youtube_video_id(link)
-                
-                articles.append({
-                    "title": f"Community Hub: {title}",
-                    "link": link,
-                    "summary": "New video drop tracking popular gameplay reactions, community streamer milestones, and live game reviews.",
-                    "date": "May 24, 2026",
-                    "category": "Gaming",
-                    "video_id": video_id
-                })
-            if len(articles) > 0:
-                print(f"    [+] Successfully aggregated {len(articles)} articles from YouTube.")
-                return articles
-    except Exception as e:
-        print(f"    [!] YouTube Creator XML feed failed: {e}. Launching fallbacks.")
-        
-    return [
-        {
-            "title": "Community Hub: Speedrunner Demolishes Elden Ring DLC in Record Time",
-            "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            "summary": "Popular gaming channel streams complete speedrun of Erdtree expansion without taking damage, mapping path optimizations and weapon scaling benchmarks.",
-            "date": "May 24, 2026",
-            "category": "Gaming",
-            "video_id": "dQw4w9WgXcQ"
-        }
-    ]
+        print(f"    [!] Wccftech Games feed failed: {e}.")
+    return []
 
 # --- DYNAMIC CONTENT MAPPING AND SEO SYNTHESIS ---
 
@@ -577,49 +454,45 @@ def synthesize_seo_meta(title_text, summary_text):
     return seo_title, seo_desc
 
 def generate_strategic_verdict(story):
-    """Generates a context-specific, professional editorial analysis of macro-implications (Nexus Strategic Verdict)."""
+    """Generates a highly context-aware, keyword-based editorial analysis of macro-implications (Nexus Strategic Verdict)."""
     title = story.get("title", "")
     summary = story.get("summary", "")
     category = story.get("category", "")
-    story_id = story.get("id", 0)
     
-    # Extract keywords
+    title_lower = title.lower()
+    summary_lower = summary.lower()
+    text_lower = f"{title_lower} {summary_lower}"
+    
+    # 1. Gaming Hardware / Software
+    if category == "Gaming" or any(k in text_lower for k in ["gpu", "rtx", "console", "steam", "physics", "rendering", "cyberpunk", "gta"]):
+        if any(k in text_lower for k in ["gpu", "rtx", "silicon", "hardware", "spec"]):
+            return "Nexus Verdict: Hardware acceleration shifts in the gaming sector are forcing developers to adopt advanced rendering pipelines. Studios must balance visual fidelity with thermal and energy performance profiles."
+        elif any(k in text_lower for k in ["patch", "update", "notes", "performance"]):
+            return "Nexus Verdict: Post-launch patch cycles reflect the growing complexity of modern cross-platform engines. Optimizing memory leaks and shader compilation remains the primary battlefield for player retention."
+        else:
+            return "Nexus Verdict: The gaming market is experiencing a shift driven by digital storefronts and subscription model dominance. Publishers must adapt their franchise timelines to align with real-time community engagement loops."
+            
+    # 2. Hardware / Infrastructure / Silicon
+    elif category == "Hardware" or any(k in text_lower for k in ["silicon", "semiconductor", "cooling", "node", "interconnect", "sub-2nm", "nvme"]):
+        return "Nexus Verdict: Silicon fabrication constraints and cooling bottlenecks are redefining edge device capabilities. Hardware integrators who master thermal dissipation will hold the strategic advantage in high-density compute markets."
+        
+    # 3. Computing / AI / Security
+    elif category == "Computing" or any(k in text_lower for k in ["ai", "security", "google", "algorithm", "neural", "network", "cybersecurity"]):
+        if "security" in text_lower or "privacy" in text_lower:
+            return "Nexus Verdict: AI security integration remains highly reactive. Enterprises must institute zero-trust data ingestion boundaries to protect against proprietary leakage and neural poisoning vectors."
+        else:
+            return "Nexus Verdict: Algorithmic efficiency gains are outpacing raw hardware capabilities. Software vendors optimizing local compilation and token costs will capture major market segments."
+            
+    # 4. Fintech / SEC / Insider
+    elif category == "Fintech" or any(k in text_lower for k in ["sec", "filing", "insider", "stock", "transaction", "berkshire"]):
+        return "Nexus Verdict: Regulatory disclosure intervals represent a critical latency gap for market participants. Aggregating corporate insider reallocations provides essential macro-signals for tech sector sector rotation."
+        
+    # 5. General Fallback (Dynamic keyword insertion)
     words = [w.strip(",.()\"'-") for w in title.split() if len(w) > 4]
     keywords = [w for w in words if w.lower() not in ["about", "their", "there", "would", "could", "should", "under", "while"]]
+    focus = keywords[0] if keywords else "this technological development"
     
-    keyword_focus = keywords[0] if keywords else "this development"
-    secondary_focus = keywords[1] if len(keywords) > 1 else "market paradigm"
-    
-    macros = [
-        f"The emergence of {keyword_focus} represents a pivotal shift in the {category.lower()} landscape, signaling accelerated consolidation.",
-        f"By integrating {keyword_focus}, the industry is witnessing a structural transformation that forces competitors to re-evaluate their long-term roadmaps.",
-        f"This latest update surrounding {keyword_focus} highlights the growing friction between legacy frameworks and modern high-velocity platforms.",
-        f"The strategic timing of {keyword_focus} suggests a concerted effort to capture early-adopter sentiment before the broader market shifts.",
-        f"Analysing the underlying mechanics of {keyword_focus} reveals a deeper trend toward decentralized architectures and optimized efficiency."
-    ]
-    
-    effects = [
-        f"We anticipate that {secondary_focus} will experience immediate pressure as operational costs and consumer expectations adjust to this new standard.",
-        f"This move directly challenges existing protocols, potentially paving the way for wider adoption of high-performance standards.",
-        f"For developers and engineers, managing the integration of {secondary_focus} will remain a critical bottleneck over the next fiscal quarters.",
-        f"While the short-term impact on {secondary_focus} may be minimal, the cumulative pressure will likely trigger defensive design pivots from major players.",
-        f"Early telemetry indicates that consumer response to {secondary_focus} will dictate whether this transition is swift or faces prolonged friction."
-    ]
-    
-    verdicts = [
-        f"Nexus Verdict: A clear milestone for the ecosystem. Stakeholders should monitor adoption velocity closely rather than rushing into early deployment.",
-        f"Nexus Verdict: High potential, moderate execution risk. We recommend a cautious integration strategy until standard compatibility is fully certified.",
-        f"Nexus Verdict: This is a disruptive development. Anticipate rapid iteration cycles and prepare for shifting regulatory or market benchmarks.",
-        f"Nexus Verdict: A tactical victory for first-movers. However, long-term sustainability depends on continuous optimization and ecosystem support.",
-        f"Nexus Verdict: Standard evolutionary step rather than a paradigm shift. Monitor competitor countermeasures before making significant budget allocations."
-    ]
-    
-    h = hash(title)
-    macro_idx = (h + story_id) % len(macros)
-    effect_idx = (h * 3 + story_id) % len(effects)
-    verdict_idx = (h * 7 + story_id) % len(verdicts)
-    
-    return f"{macros[macro_idx]} {effects[effect_idx]} {verdicts[verdict_idx]}"
+    return f"Nexus Verdict: The integration of {focus} represents a pivotal evolution in {category.lower()} applications. Strategic leaders should assess adoption velocity and regulatory frameworks before scaling operations."
 
 def compile_article_page(story, idx):
     """Compiles and writes article_{id}.html detail pages with Dynamic SEO and Content Mapping."""
@@ -632,19 +505,6 @@ def compile_article_page(story, idx):
         
     tag_class = "tag-blue" if story["category"] == "Computing" else "tag-red" if story["category"] == "Hardware" else "tag-yellow" if story["category"] == "Fintech" else "tag-green"
     
-    video_player_html = ""
-    if story["category"] == "Gaming":
-        video_id = get_youtube_video_id_for_story(story)
-        video_player_html = f"""
-        <div class="video-aspect-ratio" style="margin-bottom: 1.5rem; border-radius: 8px; overflow: hidden; background: #000;">
-            <iframe src="https://www.youtube.com/embed/{video_id}" 
-                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-            </iframe>
-        </div>
-        """
-
     verdict_text = generate_strategic_verdict(story)
 
     html = f"""<!DOCTYPE html>
@@ -681,14 +541,8 @@ def compile_article_page(story, idx):
                     <span>Aggregated Network</span> &bull; <span>{story['date']}</span>
                 </div>
                 
-                {video_player_html}
-                
                 <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.7;">
                     {story['summary']}
-                </p>
-                
-                <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-                    This breaking development highlights the speed and progression inside technology sectors. Click below to review source metadata references.
                 </p>
                 
                 <a href="{story['link']}" style="display: inline-block; color: var(--google-blue); font-weight: 700; text-decoration: none; margin-bottom: 2rem;" target="_blank">
@@ -830,7 +684,6 @@ def compile_index_page(tc_articles, sec_articles, gaming_articles):
 
 def compile_gaming_page(gaming_stories):
     featured_story = gaming_stories[0] if len(gaming_stories) > 0 else None
-    video_id = get_youtube_video_id_for_story(featured_story)
     
     if featured_story:
         title_display = featured_story["title"]
@@ -838,9 +691,11 @@ def compile_gaming_page(gaming_stories):
             if title_display.startswith(prefix):
                 title_display = title_display[len(prefix):]
         summary_display = featured_story["summary"]
+        featured_article_link = f"article_{featured_story.get('id', 0)}.html"
     else:
         title_display = "Cyberpunk 2078: Neon Horizon Hands-On Preview"
         summary_display = "We spend 3 hours playing the upcoming CD Projekt Red RPG. From the sub-surface matrix layers to the revised neon-fluid physics, this could be the definitive game of the generation."
+        featured_article_link = "#"
 
     news_html = ""
     for idx, story in enumerate(gaming_stories[:6]):
@@ -888,19 +743,15 @@ def compile_gaming_page(gaming_stories):
  
         <div class="media-lounge-grid">
             <main>
-                <!-- Central Video Feature Frame -->
-                <div class="video-frame-container">
-                    <div class="video-aspect-ratio">
-                        <iframe src="https://www.youtube.com/embed/{video_id}" 
-                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" 
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen>
-                        </iframe>
-                    </div>
-                    <div class="video-info">
-                        <span class="category-tag tag-red">Featured Video</span>
+                <!-- Editorial Banner Card -->
+                <div class="editorial-banner-card">
+                    <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255, 255, 255, 0.08); border-radius: 50%;"></div>
+                    <div style="position: absolute; bottom: -80px; left: -80px; width: 250px; height: 250px; background: rgba(255, 255, 255, 0.05); border-radius: 50%;"></div>
+                    <div style="position: relative; z-index: 2;">
+                        <span class="category-tag">Featured Editorial</span>
                         <h2>{title_display}</h2>
-                        <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.5rem;">{summary_display}</p>
+                        <p>{summary_display}</p>
+                        <a href="{featured_article_link}" class="check-price-btn btn-green" style="display: inline-block; padding: 0.75rem 1.5rem; text-decoration: none; border-radius: 4px; font-weight: 700; background-color: #ffffff; color: var(--google-blue); border: none; font-size: 0.95rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Read Featured Story</a>
                     </div>
                 </div>
  
@@ -1101,13 +952,20 @@ def main():
     steam_stories = fetch_steam_feed()
     reddit_stories = fetch_reddit_feed()
     wccftech_stories = fetch_wccftech_feed()
-    youtube_stories = fetch_youtube_feed()
     
-    all_gaming_stories = steam_stories + reddit_stories + wccftech_stories + youtube_stories
+    all_gaming_stories = steam_stories + reddit_stories + wccftech_stories
     all_stories = tc_stories + sec_stories + all_gaming_stories
     
     # Replicate articles to compile 110+ article pages during execution
     original_stories = list(all_stories)
+    if not original_stories:
+        import sys
+        print("[!] Critical Error: All live feed sources returned empty lists or failed to parse. Aborting page generation to prevent infinite loops.")
+        sys.exit(1)
+        
+    for idx, story in enumerate(original_stories):
+        story["id"] = idx
+
     all_stories = []
     while len(all_stories) < 115:
         for s in original_stories:
