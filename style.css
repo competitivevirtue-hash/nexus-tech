@@ -1,0 +1,552 @@
+/* Nexus Tech & Gaming - Shared Style Sheet (Google Light Theme Upgrade) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --bg-light: #ffffff;
+    --card-light: #ffffff;
+    --border-light: #dadce0;
+    --border-hover: #202124;
+    
+    /* Google Palette */
+    --google-blue: #4285F4;
+    --google-red: #EA4335;
+    --google-yellow: #FBBC05;
+    --google-green: #34A853;
+    
+    /* Typography */
+    --text-primary: #202124;
+    --text-muted: #5f6368;
+    --text-light: #70757a;
+    
+    /* Ad Background */
+    --ad-bg: #f8f9fa;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-light);
+    color: var(--text-primary);
+    font-family: 'Inter', Arial, sans-serif;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Header & Navigation */
+header {
+    background-color: var(--bg-light);
+    border-bottom: 1px solid var(--border-light);
+    padding: 1.25rem 2.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    text-transform: uppercase;
+    color: var(--text-primary);
+}
+
+.logo span {
+    color: var(--google-blue);
+}
+
+nav {
+    display: flex;
+    gap: 1.5rem;
+}
+
+nav a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 0.25rem 0.5rem;
+    transition: color 0.15s ease, border-bottom 0.15s ease;
+    border-bottom: 2px solid transparent;
+}
+
+nav a:hover {
+    color: var(--text-primary);
+}
+
+nav a.active {
+    color: var(--google-blue);
+    border-bottom: 2px solid var(--google-blue);
+}
+
+/* Layout Wrappers */
+.main-container {
+    max-width: 1200px;
+    width: 100%;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem;
+    flex: 1;
+    display: grid;
+    gap: 2rem;
+}
+
+/* Ad Placeholders */
+.ad-slot {
+    background-color: var(--ad-bg);
+    border: 1px dashed var(--border-light);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.ad-slot::before {
+    content: "SPONSORED ADVERTISEMENT";
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+
+.ad-leaderboard {
+    min-height: 90px;
+    width: 100%;
+    max-width: 728px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.ad-skyscraper {
+    min-height: 600px;
+    width: 300px;
+    position: sticky;
+    top: 100px;
+}
+
+.ad-rectangle {
+    min-height: 250px;
+    width: 300px;
+}
+
+/* TechCrunch-Style Grid & Columns (index.html) */
+.techcrunch-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+}
+
+@media (min-width: 900px) {
+    .techcrunch-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.featured-story {
+    background-color: var(--card-light);
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 2rem;
+    margin-bottom: 2rem;
+}
+
+.featured-story h2 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.featured-story p {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    margin-bottom: 1.25rem;
+}
+
+.category-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    color: #ffffff;
+}
+
+/* Category Color Coding using Google Colors */
+.tag-blue { background-color: var(--google-blue); }
+.tag-red { background-color: var(--google-red); }
+.tag-yellow { background-color: var(--google-yellow); color: #000000; }
+.tag-green { background-color: var(--google-green); }
+
+.story-meta {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.stories-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    border-top: 1px solid var(--border-light);
+    padding-top: 2rem;
+}
+
+@media (min-width: 600px) {
+    .stories-list {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.story-card {
+    background-color: var(--card-light);
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.story-card h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+    color: var(--text-primary);
+}
+
+.story-card p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.sidebar-widget {
+    background-color: var(--bg-light);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.sidebar-widget h4 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    border-bottom: 2px solid var(--border-light);
+    padding-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.trending-item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    gap: 1rem;
+}
+
+.trending-item:last-child {
+    border-bottom: none;
+}
+
+.trending-num {
+    color: var(--google-blue);
+    font-weight: 800;
+    font-size: 1.3rem;
+}
+
+/* Media Lounge (gaming.html) */
+.media-lounge-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+}
+
+@media (min-width: 900px) {
+    .media-lounge-grid {
+        grid-template-columns: 2.2fr 1fr;
+    }
+}
+
+.video-frame-container {
+    background-color: #000000;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.video-aspect-ratio {
+    position: relative;
+    padding-top: 56.25%;
+    width: 100%;
+}
+
+.video-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #f1f3f4 0%, #e8eaed 100%);
+    cursor: pointer;
+}
+
+.video-play-btn {
+    width: 70px;
+    height: 70px;
+    background-color: var(--google-red);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 10px rgba(234, 67, 53, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.video-placeholder:hover .video-play-btn {
+    transform: scale(1.08);
+    box-shadow: 0 6px 15px rgba(234, 67, 53, 0.5);
+}
+
+.video-play-btn::before {
+    content: "";
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-left: 18px solid #ffffff;
+    margin-left: 4px;
+}
+
+.video-info {
+    background-color: var(--bg-light);
+    padding: 1.5rem;
+    color: var(--text-primary);
+}
+
+.video-info h2 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-top: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.game-reviews-list {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.game-review-row {
+    background-color: var(--card-light);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 1.25rem;
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    transition: box-shadow 0.2s ease;
+}
+
+.game-review-row:hover {
+    box-shadow: 0 4px 12px rgba(32, 33, 36, 0.08);
+}
+
+.game-thumb {
+    width: 80px;
+    height: 80px;
+    background-color: var(--ad-bg);
+    border-radius: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    color: var(--google-blue);
+    flex-shrink: 0;
+}
+
+.game-review-content {
+    flex: 1;
+}
+
+.game-review-content h4 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+
+.game-rating-badge {
+    background-color: #e8f0fe;
+    color: var(--google-blue);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+    border-radius: 20px;
+}
+
+/* Reviews & Comparison (reviews.html) */
+.reviews-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.comparison-block {
+    background-color: var(--card-light);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    transition: box-shadow 0.2s ease;
+}
+
+@media (min-width: 768px) {
+    .comparison-block {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.comparison-block:hover {
+    box-shadow: 0 4px 12px rgba(32, 33, 36, 0.08);
+}
+
+.product-info {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.product-image-box {
+    width: 100px;
+    height: 100px;
+    background-color: var(--ad-bg);
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2.5rem;
+    color: var(--google-blue);
+    flex-shrink: 0;
+}
+
+.product-details h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.star-rating {
+    color: #fbbc05; /* Google Yellow */
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.product-verdict {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.product-price-matrix {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 240px;
+}
+
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem;
+    background-color: var(--ad-bg);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-light);
+}
+
+.price-val {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.check-price-btn {
+    display: block;
+    background-color: var(--bg-light);
+    color: var(--text-primary);
+    text-align: center;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 6px;
+    border: 2px solid var(--border-light);
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Button Border Hover overrides with Google Palette */
+.btn-blue:hover {
+    border-color: var(--google-blue);
+    color: var(--google-blue);
+    background-color: #f4f8ff;
+}
+
+.btn-red:hover {
+    border-color: var(--google-red);
+    color: var(--google-red);
+    background-color: #fff5f5;
+}
+
+.btn-green:hover {
+    border-color: var(--google-green);
+    color: var(--google-green);
+    background-color: #f5fff5;
+}
+
+/* Footer styling */
+footer {
+    background-color: var(--ad-bg);
+    border-top: 1px solid var(--border-light);
+    padding: 1.5rem;
+    text-align: center;
+    margin-top: auto;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}

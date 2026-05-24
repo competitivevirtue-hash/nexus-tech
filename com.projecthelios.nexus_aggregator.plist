@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.projecthelios.nexus_aggregator</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/paytonpleasant/Desktop/Project_Helios/venv/bin/python</string>
+        <string>/Users/paytonpleasant/Desktop/Project_Helios/nexus-tech/aggregator_daemon.py</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>10800</integer> <!-- 180 minutes * 60 seconds = 10800 seconds -->
+    <key>WorkingDirectory</key>
+    <string>/Users/paytonpleasant/Desktop/Project_Helios</string>
+    <key>StandardOutPath</key>
+    <string>/Users/paytonpleasant/Desktop/Project_Helios/nexus-tech/aggregator.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/paytonpleasant/Desktop/Project_Helios/nexus-tech/aggregator_error.log</string>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
