@@ -167,6 +167,60 @@ def clean_html(text):
     clean = re.compile('<.*?>')
     return re.sub(clean, '', text).strip()
 
+def extract_youtube_video_id(url):
+    if not url:
+        return None
+    patterns = [
+        r'v=([a-zA-Z0-9_-]{11})',
+        r'youtu\.be/([a-zA-Z0-9_-]{11})',
+        r'embed/([a-zA-Z0-9_-]{11})'
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+def fetch_fallback_youtube_video(query):
+    import urllib.parse
+    print(f"[-] Aggregator: Fetching fallback YouTube video for query: '{query}'...")
+    try:
+        url = f"https://www.youtube.com/feeds/videos.xml?search_query={urllib.parse.quote(query)}"
+        resp = requests.get(url, headers=get_headers(), timeout=10)
+        if resp.status_code == 200:
+            root = ET.fromstring(resp.content)
+            ns = "{http://www.w3.org/2005/Atom}"
+            yt_ns = "{http://www.youtube.com/xml/schemas/2015}"
+            entry = root.find(f"{ns}entry")
+            if entry is not None:
+                video_id_el = entry.find(f"{yt_ns}videoId")
+                if video_id_el is not None and video_id_el.text:
+                    return video_id_el.text
+                link_el = entry.find(f"{ns}link")
+                if link_el is not None:
+                    href = link_el.attrib.get("href", "")
+                    video_id = extract_youtube_video_id(href)
+                    if video_id:
+                        return video_id
+    except Exception as e:
+        print(f"    [!] Fallback search failed: {e}")
+    return "Lq594XqynZ4" # default GTA VI trailer
+
+def get_youtube_video_id_for_story(story):
+    if not story:
+        return "Lq594XqynZ4"
+    if "video_id" in story and story["video_id"]:
+        return story["video_id"]
+    video_id = extract_youtube_video_id(story.get("link", ""))
+    if video_id:
+        return video_id
+    title = story.get("title", "")
+    for prefix in ["Steam Update: ", "Gaming Rumor: ", "Industry News: ", "Community Hub: "]:
+        if title.startswith(prefix):
+            title = title[len(prefix):]
+    search_query = f"{title} official game trailer"
+    return fetch_fallback_youtube_video(search_query)
+
 def fetch_techcrunch_feed():
     url = "https://techcrunch.com/feed/"
     print("[-] Aggregator: Fetching TechCrunch RSS feed...")
@@ -415,12 +469,21 @@ def fetch_youtube_feed():
                 title = title_el.text if (title_el is not None and title_el.text) else "YouTube Gaming Video"
                 link_el = entry.find(f"{ns}link")
                 link = link_el.attrib.get("href") if link_el is not None else "#"
+                
+                # Extract video ID
+                yt_ns = "{http://www.youtube.com/xml/schemas/2015}"
+                video_id_el = entry.find(f"{yt_ns}videoId")
+                video_id = video_id_el.text if video_id_el is not None else None
+                if not video_id:
+                    video_id = extract_youtube_video_id(link)
+                
                 articles.append({
                     "title": f"Community Hub: {title}",
                     "link": link,
                     "summary": "New video drop tracking popular gameplay reactions, community streamer milestones, and live game reviews.",
                     "date": "May 24, 2026",
-                    "category": "Gaming"
+                    "category": "Gaming",
+                    "video_id": video_id
                 })
             if len(articles) > 0:
                 print(f"    [+] Successfully aggregated {len(articles)} articles from YouTube.")
@@ -434,7 +497,8 @@ def fetch_youtube_feed():
             "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
             "summary": "Popular gaming channel streams complete speedrun of Erdtree expansion without taking damage, mapping path optimizations and weapon scaling benchmarks.",
             "date": "May 24, 2026",
-            "category": "Gaming"
+            "category": "Gaming",
+            "video_id": "dQw4w9WgXcQ"
         }
     ]
 
@@ -486,6 +550,19 @@ def compile_article_page(story, idx):
         
     tag_class = "tag-blue" if story["category"] == "Computing" else "tag-red" if story["category"] == "Hardware" else "tag-yellow" if story["category"] == "Fintech" else "tag-green"
     
+    video_player_html = ""
+    if story["category"] == "Gaming":
+        video_id = get_youtube_video_id_for_story(story)
+        video_player_html = f"""
+        <div class="video-aspect-ratio" style="margin-bottom: 1.5rem; border-radius: 8px; overflow: hidden; background: #000;">
+            <iframe src="https://www.youtube.com/embed/{video_id}" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+            </iframe>
+        </div>
+        """
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -519,6 +596,8 @@ def compile_article_page(story, idx):
                 <div class="story-meta" style="margin-bottom: 1.5rem;">
                     <span>Aggregated Network</span> &bull; <span>{story['date']}</span>
                 </div>
+                
+                {video_player_html}
                 
                 <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.7;">
                     {story['summary']}
@@ -661,6 +740,19 @@ def compile_index_page(tc_articles, sec_articles, gaming_articles):
     return html
 
 def compile_gaming_page(gaming_stories):
+    featured_story = gaming_stories[0] if len(gaming_stories) > 0 else None
+    video_id = get_youtube_video_id_for_story(featured_story)
+    
+    if featured_story:
+        title_display = featured_story["title"]
+        for prefix in ["Steam Update: ", "Gaming Rumor: ", "Industry News: ", "Community Hub: "]:
+            if title_display.startswith(prefix):
+                title_display = title_display[len(prefix):]
+        summary_display = featured_story["summary"]
+    else:
+        title_display = "Cyberpunk 2078: Neon Horizon Hands-On Preview"
+        summary_display = "We spend 3 hours playing the upcoming CD Projekt Red RPG. From the sub-surface matrix layers to the revised neon-fluid physics, this could be the definitive game of the generation."
+
     news_html = ""
     for idx, story in enumerate(gaming_stories[:6]):
         tag_class = "tag-green"
@@ -701,30 +793,30 @@ def compile_gaming_page(gaming_stories):
             </nav>
         </div>
     </header>
-
+ 
     <div class="main-container">
         {AD_LEADERBOARD_HTML}
-
+ 
         <div class="media-lounge-grid">
             <main>
                 <!-- Central Video Feature Frame -->
                 <div class="video-frame-container">
                     <div class="video-aspect-ratio">
-                        <div class="video-placeholder">
-                            <div class="video-play-btn"></div>
-                            <div style="font-size: 1.25rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #202124;">Cyberpunk 2078: First Hands-On Gameplay Preview</div>
-                            <div style="font-size: 0.9rem; color: var(--google-red); margin-top: 0.5rem;"><i class="fa-solid fa-eye"></i> Watch trailer (2:45)</div>
-                        </div>
+                        <iframe src="https://www.youtube.com/embed/{video_id}" 
+                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                        </iframe>
                     </div>
                     <div class="video-info">
                         <span class="category-tag tag-red">Featured Video</span>
-                        <h2>Cyberpunk 2078: Neon Horizon Hands-On Preview</h2>
-                        <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.5rem;">We spend 3 hours playing the upcoming CD Projekt Red RPG. From the sub-surface matrix layers to the revised neon-fluid physics, this could be the definitive game of the generation.</p>
+                        <h2>{title_display}</h2>
+                        <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.5rem;">{summary_display}</p>
                     </div>
                 </div>
-
+ 
                 {AD_RECTANGLE_HTML}
-
+ 
                 <!-- Trending Game Reviews List -->
                 <div style="margin-top: 2rem;">
                     <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border-light); padding-bottom: 0.5rem; color: var(--text-primary);">Trending Reviews</h3>
@@ -733,13 +825,13 @@ def compile_gaming_page(gaming_stories):
                     </div>
                 </div>
             </main>
-
+ 
             <aside class="sidebar">
                 {AD_SKYSCRAPER_HTML}
             </aside>
         </div>
     </div>
-
+ 
     {FOOTER_HTML}
 </body>
 </html>
