@@ -550,3 +550,32 @@ footer {
     font-size: 0.8rem;
     color: var(--text-muted);
 }
+
+/* Strategic Verdict Box */
+.verdict-box {
+    background-color: var(--ad-bg);
+    border-left: 4px solid var(--google-blue);
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+    border-left-width: 4px;
+}
+
+.verdict-box h3 {
+    margin-bottom: 0.75rem;
+    color: var(--google-blue);
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.verdict-box p {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0;
+}

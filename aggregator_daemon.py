@@ -167,6 +167,19 @@ def clean_html(text):
     clean = re.compile('<.*?>')
     return re.sub(clean, '', text).strip()
 
+EVERGREEN_TRAILERS = [
+    "Lq594XqynZ4",  # GTA VI Official Trailer 1
+    "UuxR45XlR4U",  # Cyberpunk 2077 Official Cinematic Trailer
+    "H2EC4t9z-H0",  # Elden Ring Official Gameplay Reveal
+    "OtSE6-N-wSw",  # Hades II Official Trailer
+    "K3dbaB9hcDM",  # Marvel's Spider-Man 2 Gameplay Trailer
+    "f3Vw4j2cQ9w",  # God of War Ragnarök Trailer
+    "hvoD7ehJnVc",  # Zelda: Tears of the Kingdom Official Trailer
+    "eaW0tYpxyp0",  # Death Stranding 2 Trailer
+    "X8zLJlU_-60",  # Ghost of Yōtei Announce Trailer
+    "4HPrC0_M64M"   # GTA V Official Next-Gen Trailer
+]
+
 def extract_youtube_video_id(url):
     if not url:
         return None
@@ -181,11 +194,39 @@ def extract_youtube_video_id(url):
             return match.group(1)
     return None
 
+def get_evergreen_fallback_video_id(story_title):
+    idx = hash(story_title or "") % len(EVERGREEN_TRAILERS)
+    return EVERGREEN_TRAILERS[idx]
+
+def validate_and_get_video_id(video_id, story_title):
+    if not video_id or not isinstance(video_id, str) or len(video_id) != 11 or not re.match(r'^[a-zA-Z0-9_-]{11}$', video_id):
+        return get_evergreen_fallback_video_id(story_title)
+    return video_id
+
+def sanitize_search_query(query):
+    query_clean = re.sub(r'\b(?:patch|update|v|ver\.?)\s*\d+(?:\.\d+)*\b', '', query, flags=re.IGNORECASE)
+    query_clean = re.sub(r'[^a-zA-Z0-9\s]', ' ', query_clean)
+    filler_words = ["release notes", "performance calibration", "discussion thread", "week beginning", "discord", "mod", "leaked on", "gets a whole new ending", "resurrected a cut police gunship"]
+    for word in filler_words:
+        query_clean = re.sub(r'\b' + re.escape(word) + r'\b', '', query_clean, flags=re.IGNORECASE)
+    franchises = ["cyberpunk", "gta", "grand theft auto", "elden ring", "zelda", "hades", "spider-man", "god of war", "batman", "dragon quest", "007"]
+    query_lower = query_clean.lower()
+    for franchise in franchises:
+        if franchise in query_lower:
+            return f"{franchise} official trailer"
+    words = [w for w in query_clean.split() if w]
+    if len(words) > 3:
+        query_clean = " ".join(words[:3])
+    else:
+        query_clean = " ".join(words)
+    return f"{query_clean} official trailer"
+
 def fetch_fallback_youtube_video(query):
     import urllib.parse
-    print(f"[-] Aggregator: Fetching fallback YouTube video for query: '{query}'...")
+    sanitized = sanitize_search_query(query)
+    print(f"[-] Aggregator: Fetching fallback YouTube video for query: '{sanitized}'...")
     try:
-        url = f"https://www.youtube.com/feeds/videos.xml?search_query={urllib.parse.quote(query)}"
+        url = f"https://www.youtube.com/feeds/videos.xml?search_query={urllib.parse.quote(sanitized)}"
         resp = requests.get(url, headers=get_headers(), timeout=10)
         if resp.status_code == 200:
             root = ET.fromstring(resp.content)
@@ -204,22 +245,18 @@ def fetch_fallback_youtube_video(query):
                         return video_id
     except Exception as e:
         print(f"    [!] Fallback search failed: {e}")
-    return "Lq594XqynZ4" # default GTA VI trailer
+    return get_evergreen_fallback_video_id(sanitized)
 
 def get_youtube_video_id_for_story(story):
     if not story:
-        return "Lq594XqynZ4"
-    if "video_id" in story and story["video_id"]:
-        return story["video_id"]
-    video_id = extract_youtube_video_id(story.get("link", ""))
-    if video_id:
-        return video_id
+        return EVERGREEN_TRAILERS[0]
     title = story.get("title", "")
-    for prefix in ["Steam Update: ", "Gaming Rumor: ", "Industry News: ", "Community Hub: "]:
-        if title.startswith(prefix):
-            title = title[len(prefix):]
-    search_query = f"{title} official game trailer"
-    return fetch_fallback_youtube_video(search_query)
+    video_id = story.get("video_id")
+    if not video_id:
+        video_id = extract_youtube_video_id(story.get("link", ""))
+    if not video_id:
+        video_id = fetch_fallback_youtube_video(title)
+    return validate_and_get_video_id(video_id, title)
 
 def fetch_techcrunch_feed():
     url = "https://techcrunch.com/feed/"
@@ -539,6 +576,51 @@ def synthesize_seo_meta(title_text, summary_text):
         
     return seo_title, seo_desc
 
+def generate_strategic_verdict(story):
+    """Generates a context-specific, professional editorial analysis of macro-implications (Nexus Strategic Verdict)."""
+    title = story.get("title", "")
+    summary = story.get("summary", "")
+    category = story.get("category", "")
+    story_id = story.get("id", 0)
+    
+    # Extract keywords
+    words = [w.strip(",.()\"'-") for w in title.split() if len(w) > 4]
+    keywords = [w for w in words if w.lower() not in ["about", "their", "there", "would", "could", "should", "under", "while"]]
+    
+    keyword_focus = keywords[0] if keywords else "this development"
+    secondary_focus = keywords[1] if len(keywords) > 1 else "market paradigm"
+    
+    macros = [
+        f"The emergence of {keyword_focus} represents a pivotal shift in the {category.lower()} landscape, signaling accelerated consolidation.",
+        f"By integrating {keyword_focus}, the industry is witnessing a structural transformation that forces competitors to re-evaluate their long-term roadmaps.",
+        f"This latest update surrounding {keyword_focus} highlights the growing friction between legacy frameworks and modern high-velocity platforms.",
+        f"The strategic timing of {keyword_focus} suggests a concerted effort to capture early-adopter sentiment before the broader market shifts.",
+        f"Analysing the underlying mechanics of {keyword_focus} reveals a deeper trend toward decentralized architectures and optimized efficiency."
+    ]
+    
+    effects = [
+        f"We anticipate that {secondary_focus} will experience immediate pressure as operational costs and consumer expectations adjust to this new standard.",
+        f"This move directly challenges existing protocols, potentially paving the way for wider adoption of high-performance standards.",
+        f"For developers and engineers, managing the integration of {secondary_focus} will remain a critical bottleneck over the next fiscal quarters.",
+        f"While the short-term impact on {secondary_focus} may be minimal, the cumulative pressure will likely trigger defensive design pivots from major players.",
+        f"Early telemetry indicates that consumer response to {secondary_focus} will dictate whether this transition is swift or faces prolonged friction."
+    ]
+    
+    verdicts = [
+        f"Nexus Verdict: A clear milestone for the ecosystem. Stakeholders should monitor adoption velocity closely rather than rushing into early deployment.",
+        f"Nexus Verdict: High potential, moderate execution risk. We recommend a cautious integration strategy until standard compatibility is fully certified.",
+        f"Nexus Verdict: This is a disruptive development. Anticipate rapid iteration cycles and prepare for shifting regulatory or market benchmarks.",
+        f"Nexus Verdict: A tactical victory for first-movers. However, long-term sustainability depends on continuous optimization and ecosystem support.",
+        f"Nexus Verdict: Standard evolutionary step rather than a paradigm shift. Monitor competitor countermeasures before making significant budget allocations."
+    ]
+    
+    h = hash(title)
+    macro_idx = (h + story_id) % len(macros)
+    effect_idx = (h * 3 + story_id) % len(effects)
+    verdict_idx = (h * 7 + story_id) % len(verdicts)
+    
+    return f"{macros[macro_idx]} {effects[effect_idx]} {verdicts[verdict_idx]}"
+
 def compile_article_page(story, idx):
     """Compiles and writes article_{id}.html detail pages with Dynamic SEO and Content Mapping."""
     seo_title, seo_desc = synthesize_seo_meta(story["title"], story["summary"])
@@ -562,6 +644,8 @@ def compile_article_page(story, idx):
             </iframe>
         </div>
         """
+
+    verdict_text = generate_strategic_verdict(story)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -610,6 +694,11 @@ def compile_article_page(story, idx):
                 <a href="{story['link']}" style="display: inline-block; color: var(--google-blue); font-weight: 700; text-decoration: none; margin-bottom: 2rem;" target="_blank">
                     Read Original Coverage <i class="fa-solid fa-arrow-up-right-from-square"></i>
                 </a>
+
+                <div class="verdict-box">
+                    <h3><i class="fa-solid fa-gavel"></i> Nexus Strategic Verdict</h3>
+                    <p>{verdict_text}</p>
+                </div>
 
                 {mapped_product_html}
             </main>
@@ -960,6 +1049,47 @@ def compile_reviews_page():
 """
     return html
 
+def generate_sitemap(articles):
+    """Generates sitemap.xml listing all static pages and dynamic article pages."""
+    base_url = "https://competitivevirtue-hash.github.io/nexus-tech/"
+    pages = [
+        "index.html",
+        "gaming.html",
+        "reviews.html",
+        "privacy.html",
+        "terms.html",
+        "disclosure.html"
+    ]
+    
+    xml_lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    ]
+    
+    # Add main pages
+    for page in pages:
+        xml_lines.append(f'  <url>')
+        xml_lines.append(f'    <loc>{base_url}{page}</loc>')
+        xml_lines.append(f'    <changefreq>daily</changefreq>')
+        xml_lines.append(f'    <priority>0.8</priority>')
+        xml_lines.append(f'  </url>')
+        
+    # Add article pages
+    for idx in range(len(articles)):
+        xml_lines.append(f'  <url>')
+        xml_lines.append(f'    <loc>{base_url}article_{idx}.html</loc>')
+        xml_lines.append(f'    <changefreq>weekly</changefreq>')
+        xml_lines.append(f'    <priority>0.5</priority>')
+        xml_lines.append(f'  </url>')
+        
+    xml_lines.append('</urlset>')
+    
+    sitemap_content = "\n".join(xml_lines)
+    sitemap_path = os.path.join(BASE_DIR, "sitemap.xml")
+    with open(sitemap_path, "w", encoding="utf-8") as f:
+        f.write(sitemap_content)
+    print(f"    [+] Successfully generated sitemap: '{sitemap_path}'")
+
 def main():
     print("================================================================================")
     print("            AUTOMATED NEWS AGGREGATION & TEMPLATE COMPILER")
@@ -1015,6 +1145,9 @@ def main():
     with open(reviews_path, "w", encoding="utf-8") as f:
         f.write(reviews_html)
     print(f"    [+] Successfully compiled: '{reviews_path}'")
+    
+    # Generate sitemap
+    generate_sitemap(all_stories)
     
     print("\n================================================================================")
     print("            AGGREGATION & STATIC COMPILATION RUN COMPLETE")
