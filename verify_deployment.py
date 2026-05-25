@@ -113,7 +113,7 @@ def main():
     else:
         print("    [PASS] Article card linkage verification passed.")
 
-    # 4. Verify all article detail subpages are video-free and contain styled verdict boxes
+    # 4. Verify all article detail subpages are video-free and contain styled verdict boxes and structured layouts with correct word counts
     html_files = [f for f in os.listdir(base_dir) if f.startswith("article_") and f.endswith(".html")]
     print(f"[-] Scanning {len(html_files)} generated article detail subpages...")
     
@@ -130,6 +130,25 @@ def main():
         # Assert NO iframes exist
         if article_soup.find("iframe"):
             print(f"    [FAIL] Article '{filename}' contains an <iframe>, YouTube element not eradicated")
+            sys.exit(1)
+            
+        # Verify editorial column exists
+        editorial_col = article_soup.find(class_="editorial-column")
+        if not editorial_col:
+            print(f"    [FAIL] Article '{filename}' is missing '.editorial-column' container")
+            sys.exit(1)
+            
+        # Verify all structured sub-sections exist
+        for class_name in ["feature-breakdown", "specs-matrix", "market-position", "verdict-box"]:
+            if not editorial_col.find(class_=class_name):
+                print(f"    [FAIL] Article '{filename}' is missing '.{class_name}' inside editorial column")
+                sys.exit(1)
+                
+        # Verify word count strictly in [400, 600] range
+        words = editorial_col.get_text().split()
+        word_count = len(words)
+        if word_count < 400 or word_count > 600:
+            print(f"    [FAIL] Article '{filename}' main text word count {word_count} is outside [400, 600] range!")
             sys.exit(1)
             
         # Verify verdict box exists
@@ -164,6 +183,7 @@ def main():
     print("================================================================================")
     print(f"             QA PASSED: Verified 'sitemap.xml' structure & complete coverage.")
     print(f"             Verified 100% video-free HTML files (0 iframes found).")
+    print(f"             Verified structured layouts and [400, 600] word counts in all {len(html_files)} articles.")
     print(f"             Verified '.verdict-box' with context-aware logic present in all {len(html_files)} articles.")
     print("================================================================================")
     sys.exit(0)

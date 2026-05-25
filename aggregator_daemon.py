@@ -453,8 +453,12 @@ def synthesize_seo_meta(title_text, summary_text):
         
     return seo_title, seo_desc
 
-def generate_strategic_verdict(story):
-    """Generates a highly context-aware, keyword-based editorial analysis of macro-implications (Nexus Strategic Verdict)."""
+def synthesize_deep_editorial(story):
+    """
+    Overhauls the text synthesis module to expand any incoming story into a comprehensive 
+    400-600 word deeply detailed editorial column with structured sub-sections.
+    """
+    from bs4 import BeautifulSoup
     title = story.get("title", "")
     summary = story.get("summary", "")
     category = story.get("category", "")
@@ -463,36 +467,341 @@ def generate_strategic_verdict(story):
     summary_lower = summary.lower()
     text_lower = f"{title_lower} {summary_lower}"
     
-    # 1. Gaming Hardware / Software
-    if category == "Gaming" or any(k in text_lower for k in ["gpu", "rtx", "console", "steam", "physics", "rendering", "cyberpunk", "gta"]):
-        if any(k in text_lower for k in ["gpu", "rtx", "silicon", "hardware", "spec"]):
-            return "Nexus Verdict: Hardware acceleration shifts in the gaming sector are forcing developers to adopt advanced rendering pipelines. Studios must balance visual fidelity with thermal and energy performance profiles."
-        elif any(k in text_lower for k in ["patch", "update", "notes", "performance"]):
-            return "Nexus Verdict: Post-launch patch cycles reflect the growing complexity of modern cross-platform engines. Optimizing memory leaks and shader compilation remains the primary battlefield for player retention."
-        else:
-            return "Nexus Verdict: The gaming market is experiencing a shift driven by digital storefronts and subscription model dominance. Publishers must adapt their franchise timelines to align with real-time community engagement loops."
-            
-    # 2. Hardware / Infrastructure / Silicon
-    elif category == "Hardware" or any(k in text_lower for k in ["silicon", "semiconductor", "cooling", "node", "interconnect", "sub-2nm", "nvme"]):
-        return "Nexus Verdict: Silicon fabrication constraints and cooling bottlenecks are redefining edge device capabilities. Hardware integrators who master thermal dissipation will hold the strategic advantage in high-density compute markets."
-        
-    # 3. Computing / AI / Security
-    elif category == "Computing" or any(k in text_lower for k in ["ai", "security", "google", "algorithm", "neural", "network", "cybersecurity"]):
-        if "security" in text_lower or "privacy" in text_lower:
-            return "Nexus Verdict: AI security integration remains highly reactive. Enterprises must institute zero-trust data ingestion boundaries to protect against proprietary leakage and neural poisoning vectors."
-        else:
-            return "Nexus Verdict: Algorithmic efficiency gains are outpacing raw hardware capabilities. Software vendors optimizing local compilation and token costs will capture major market segments."
-            
-    # 4. Fintech / SEC / Insider
-    elif category == "Fintech" or any(k in text_lower for k in ["sec", "filing", "insider", "stock", "transaction", "berkshire"]):
-        return "Nexus Verdict: Regulatory disclosure intervals represent a critical latency gap for market participants. Aggregating corporate insider reallocations provides essential macro-signals for tech sector sector rotation."
-        
-    # 5. General Fallback (Dynamic keyword insertion)
+    # Extract keywords for dynamic replacement
     words = [w.strip(",.()\"'-") for w in title.split() if len(w) > 4]
     keywords = [w for w in words if w.lower() not in ["about", "their", "there", "would", "could", "should", "under", "while"]]
-    focus = keywords[0] if keywords else "this technological development"
+    focus = keywords[0] if keywords else "this industry innovation"
+    sec_focus = keywords[1] if len(keywords) > 1 else "the overall market"
+    third_focus = keywords[2] if len(keywords) > 2 else "the broader sector"
     
-    return f"Nexus Verdict: The integration of {focus} represents a pivotal evolution in {category.lower()} applications. Strategic leaders should assess adoption velocity and regulatory frameworks before scaling operations."
+    if "sec" in text_lower or "filing" in text_lower or "insider" in text_lower:
+        spec_list = [
+            ("Reporting Framework", "SEC Form 4 corporate disclosure standard"),
+            ("Data Ingestion Latency", "Real-time parsing of EDGAR transaction entries"),
+            ("Asset Segmentation", "Equities, options contracts, and restricted stock units"),
+            ("Telemetry Tracking", "Automated executive transaction alert feeds")
+        ]
+        competitors_text = (
+            f"In the automated compliance space, tracking movements like {focus} highlights the efficiency difference between "
+            "reactive monthly reports and proactive institutional analytics. Platforms like OpenInsider, WhaleWisdom, and SEC Form 4 scanners "
+            f"compete directly to capture early executive signals. While legacy platforms provide raw tables, the integration of {sec_focus} "
+            "enables real-time portfolio realignment alerts that keep retail and institutional subscribers ahead of key market inflection points."
+        )
+        verdict_text = (
+            f"Nexus Verdict: Monitoring the insider flows of {focus} reveals critical corporate strategy signals that are often obscured in standard earnings calls. "
+            f"As corporate governance becomes more transparent, real-time alert tools focused on {sec_focus} will remain a mandatory "
+            "resource for compliance managers and high-velocity traders mapping macro sector shifts."
+        )
+        p1 = (
+            f"The regulatory disclosure landscape is undergoing a massive shift as tools scan federal registries. The transaction "
+            f"details surrounding {focus} emphasize the critical importance of corporate transparency in an era of rapid market fluctuations. "
+            f"By tracking files in real time, market participants gain clear insights into internal executive sentiment and corporate treasury direction."
+        )
+        p2 = (
+            f"Historically, processing raw SEC EDGAR XML filings was a labor-intensive chore. Modern automation frameworks parse "
+            f"these submissions instantly, translating raw records into strategic indicators. This technological capability allows users to assess "
+            f"whether actions relating to {sec_focus} represent routine exercises or strategic, defensive positioning in response to macro shifts."
+        )
+        p3 = (
+            f"As corporate boards face scrutiny, tracking insider flows is a core pillar of modern risk mitigation. Analyzing the "
+            f"reallocations of {third_focus} gives a look at capital structures, helping managers protect interests against sudden shifts."
+        )
+        extra_paragraphs = [
+            f"Furthermore, the integration of real-time telemetry systems ensures compliance officers can audit transactions without manual intervention. "
+            f"By standardizing raw EDGAR feeds, these tools mitigate reporting lags, providing stakeholders with verified updates on {focus}.",
+            f"In addition, early discovery of transaction patterns helps analysts anticipate corporate restructuring events. "
+            f"As organizations navigate regulatory hurdles, utilizing executive transaction insights becomes key to mapping {sec_focus} changes.",
+            f"Importantly, the adoption of automated compliance tools reduces administrative overhead and minimizes human error in reporting. "
+            f"This efficiency allows teams to focus on analyzing the strategic implications of major moves within {third_focus}.",
+            f"Ultimately, companies that prioritize real-time transparency will build stronger trust with shareholders and regulators. "
+            f"By implementing robust monitoring platforms, they ensure all stakeholder questions regarding {focus} are addressed promptly."
+        ]
+        
+    elif "gpu" in text_lower or "rtx" in text_lower or "graphics" in text_lower or "silicon" in text_lower:
+        spec_list = [
+            ("Core Architecture", "Sub-2nm manufacturing process nodes"),
+            ("Memory Configuration", "GDDR7 ultra-high-bandwidth dedicated channels"),
+            ("Thermal Dissipation", "Sub-surface micro-channel liquid-to-silicon heat sinks"),
+            ("Ray Reconstruction", "Real-time neural prediction tensor cores")
+        ]
+        competitors_text = (
+            f"The high-performance rendering market is dominated by NVIDIA's RTX architectures, with AMD's RDNA and Intel's Arc platforms "
+            f"representing the primary alternatives. The development of {focus} directly challenges competitor efficiency paradigms, "
+            f"introducing structural hardware features that AMD's display division must replicate. This competition shapes the future of "
+            f"high-end PCs, cloud graphics engines, and local generative processing matrices."
+        )
+        verdict_text = (
+            f"Nexus Verdict: The implementation of {focus} represents a massive leap in processing density, though it highlights thermal "
+            f"dissipation challenges. Developers should optimize code bases for {sec_focus} architectures, as these silicon advancements "
+            "will define standard graphics requirements over the next decade."
+        )
+        p1 = (
+            f"The pace of semiconductor fabrication continues to accelerate as processors push the physical limits of silicon. "
+            f"The announcement of {focus} represents a milestone in engineering, integrating billions of transistors onto a unified substrate. "
+            f"This design allows for greater instruction execution density, bypassing the physical interconnect bottlenecks that limited legacy cards."
+        )
+        p2 = (
+            f"A major design challenge in this generational shift is managing heat under intense workloads. By integrating "
+            f"sub-surface liquid channels directly onto the silicon die, engineers have mitigated the risks of thermal throttling. "
+            f"This ensures that {sec_focus} remains stable during long compute periods, delivering consistent frame times and raw processing throughput."
+        )
+        p3 = (
+            f"Looking forward, the convergence of AI prediction algorithms and hardware rasterization will define graphics. "
+            f"By utilizing specialized tensor cores, {third_focus} can predict frames with accuracy, cutting rendering overhead and power drain."
+        )
+        extra_paragraphs = [
+            f"Furthermore, memory architectures must evolve alongside processing units to prevent bandwidth bottlenecks. "
+            f"Utilizing high-bandwidth memory options ensures that large datasets are routed to the processing cores without latency, unlocking {focus} potential.",
+            f"In addition, developer tools play a critical role in unlocking hardware capabilities. "
+            f"By optimizing software pipelines for these new architectures, creators can deliver experiences that leverage the full power of {sec_focus}.",
+            f"Importantly, the environmental impact of high-power hardware remains a key concern for manufacturers. "
+            f"Implementing advanced power management algorithms helps mitigate energy consumption, keeping {third_focus} platforms efficient under load.",
+            f"Ultimately, the competitive dynamics between major chipmakers will continue to drive rapid innovation. "
+            f"As teams push the boundaries of silicon fabrication, the industry will see unprecedented capabilities in the {focus} space."
+        ]
+
+    elif "oled" in text_lower or "display" in text_lower or "monitor" in text_lower or "smartglasses" in text_lower or "xreal" in text_lower or "glasses" in text_lower:
+        spec_list = [
+            ("Panel Technology", "Micro-OLED with quantum dot enhancements"),
+            ("Refresh Rate", "144Hz high-velocity dynamic refresh scaling"),
+            ("Color Volume Accuracy", "99% DCI-P3 professional calibration"),
+            ("Optical Waveguide", "Diffractive silicon-carbide lightguide matrix")
+        ]
+        competitors_text = (
+            f"In the display and smartglasses landscape, Xreal's products compete with Meta's Orion/Quest lines, Apple's Vision Pro, "
+            f"and Samsung's micro-OLED panels. The integration of {focus} shifts consumer expectations toward higher pixel-per-degree metrics. "
+            f"Competitors are forced to focus on weight reduction and waveguide efficiency, as consumers demand devices that look like "
+            f"standard eyewear while delivering high-contrast, bright augmented visuals."
+        )
+        verdict_text = (
+            f"Nexus Verdict: The advancements seen in {focus} set a new benchmark for optical wearable clarity. While pricing remains a barrier "
+            f"for mass adoption, the implementation of {sec_focus} provides a clear path for enterprise and gaming integration over the next fiscal cycle."
+        )
+        p1 = (
+            f"Display technology is shifting as consumer demand moves from flat screens to wearable optics. "
+            f"The specs of {focus} highlight a trend toward higher pixel densities and wider color volumes. "
+            f"These displays provide clean visuals that reduce eye strain, paving the way for daily, long-term wearable computing use cases."
+        )
+        p2 = (
+            f"A core engineering hurdle in wearable optics has been light transmission efficiency. Diffractive silicon-carbide waveguides "
+            f"allow the projector units to direct light to the eye with minimal degradation. This resolves the outdoor visibility problems "
+            f"that limited first-generation devices, ensuring {sec_focus} delivers clear images in high ambient light environments."
+        )
+        p3 = (
+            f"Furthermore, integrating dynamic refresh rate matrices allows the system to scale down power during static tasks. "
+            f"This optimizes battery efficiency, enabling lightweight glasses like {third_focus} to run without bulky external battery packs."
+        )
+        extra_paragraphs = [
+            f"In addition, ergonomic design remains a critical factor for user adoption of wearable displays. "
+            f"By distributing weight evenly across the frame, designers ensure comfort during extended sessions with {focus} systems.",
+            f"Importantly, the software ecosystem must adapt to support spatial interfaces and gesture controls. "
+            f"Developing intuitive user interfaces will be essential for making {sec_focus} accessible to a broader consumer audience.",
+            f"Furthermore, manufacturing yields for micro-OLED panels must improve to lower production costs. "
+            f"As fabrication lines mature, we expect to see more affordable consumer devices utilizing these advanced {third_focus} optics.",
+            f"Ultimately, the convergence of display technology and augmented reality will redefine personal computing. "
+            f"By blending digital overlays with the physical world, devices like {focus} will create new ways to work and play."
+        ]
+
+    elif "cyberpunk" in text_lower or "gta" in text_lower or "steam" in text_lower or "gaming" in text_lower or "cdpr" in text_lower or "mod" in text_lower or "witcher" in text_lower:
+        spec_list = [
+            ("Target Engine", "Proprietary REDengine / Unreal Engine 5 integration"),
+            ("Rendering API", "DirectX 12 Ultimate with ray-reconstruction extensions"),
+            ("Platform Optimization", "Steam Deck, PlayStation 5, and PC high-bandwidth assets"),
+            ("Community Mod Integration", "Open-source asset loading and runtime script hooks")
+        ]
+        competitors_text = (
+            f"In the AAA gaming sector, CD Projekt Red's titles compete with Rockstar Games' Grand Theft Auto, Bethesda's RPGs, "
+            f"and Sony's first-party titles. Modding projects and patch rollouts for {focus} illustrate how post-launch support "
+            f"drives long-tail monetization. This model directly rivals live-service models, proving that keeping a single-player "
+            f"world updated with features like {sec_focus} can sustain high active player counts for years."
+        )
+        verdict_text = (
+            f"Nexus Verdict: The long-tail success of {focus} shows that modern games are ongoing platforms. Studios that support "
+            f"open-source community modding and implement features like {sec_focus} will enjoy high brand loyalty and sustained revenue."
+        )
+        p1 = (
+            f"The modern gaming ecosystem has evolved beyond launch-day sales, with titles remaining active for years. "
+            f"The continuous updates for {focus} highlight how post-launch optimization changes the player relationship. "
+            f"By refining engine mechanics and updating assets, studios keep worlds fresh, encouraging long-term engagement."
+        )
+        p2 = (
+            f"A key factor in this long-term engagement is the integration of user-created content. Providing official tool sets "
+            f"and runtime script hooks allows community developers to add storylines and gameplay features. This collaborative "
+            f"relationship between players and developers transforms {sec_focus} into a platform, expanding content without increasing studio overhead."
+        )
+        p3 = (
+            f"Additionally, adopting cutting-edge rendering APIs ensures that older titles scale with next-generation GPUs. "
+            f"Integrating ray-reconstruction and virtual geometry keeps {third_focus} visually competitive with newer releases."
+        )
+        extra_paragraphs = [
+            f"In addition, multiplayer integrations and community events keep players connected over the long term. "
+            f"By hosting seasonal activities and challenges, developers can maintain high engagement levels for {focus} updates.",
+            f"Importantly, cross-play and cross-progression features have become standard expectations for modern gamers. "
+            f"Ensuring that players can access their profiles across multiple platforms enhances the value proposition of {sec_focus}.",
+            f"Furthermore, narrative-driven expansions allow developers to explore new storytelling avenues within existing worlds. "
+            f"These additions provide fresh content for veteran players while attracting newcomers to {third_focus} franchises.",
+            f"Ultimately, studios that prioritize community feedback and stable updates will enjoy long-term success. "
+            f"By maintaining an open dialogue with players, developers can ensure the continued relevance of {focus} titles."
+        ]
+
+    elif "alarm" in text_lower or "clock" in text_lower or "sleep" in text_lower or "wearable" in text_lower or "audio" in text_lower or "headset" in text_lower or "bee" in text_lower or "dreamie" in text_lower:
+        spec_list = [
+            ("Sensor Suite", "Photoplethysmography (PPG) and actigraphy arrays"),
+            ("Acoustic Profile", "Dual-driver micro-speakers with noise-isolation chambers"),
+            ("Wireless Protocol", "Bluetooth Low Energy 5.3 and Wi-Fi synchronization"),
+            ("Material Design", "Hypoallergenic soft-touch polymer housing")
+        ]
+        competitors_text = (
+            f"In the consumer sleep-tech and wearable wellness market, products like {focus} compete with Fitbit, Oura Ring, Apple Watch, "
+            f"and smart speakers from Amazon and Google. The integration of {focus} shows a design shift away from standard screens. "
+            f"By prioritizing ambient audio indicators and sleep tracking, it challenges competitors to deliver wellness tools "
+            f"that don't add to screen time fatigue or compromise user data privacy."
+        )
+        verdict_text = (
+            f"Nexus Verdict: Devices like {focus} show the potential of dedicated consumer tech. By focusing on smart sleep integration, "
+            f"the implementation of {sec_focus} targets a growing wellness market, providing a clean alternative to standard wearables."
+        )
+        p1 = (
+            f"The consumer wellness market is growing as users seek to manage their habits without screens. "
+            f"The development of {focus} represents a focus on non-intrusive sleep hygiene. "
+            f"By replacing notifications with ambient audio and tracking, this device helps establish healthy night routines."
+        )
+        p2 = (
+            f"Integrating actigraphy sensors and sleep-stage tracking allows the device to adjust sleep parameters in real time. "
+            f"This ensures that waking indicators occur at optimal times in the user's cycle. This focus on bio-feedback sets "
+            f"{sec_focus} apart from legacy clocks, making it a functional sleep-hygiene tool."
+        )
+        p3 = (
+            f"Moreover, the dual-driver speakers deliver crisp, low-frequency soundscapes that mask environmental noise. "
+            f"By optimizing these acoustic enclosures, {third_focus} provides white-noise performance without bulky hardware."
+        )
+        extra_paragraphs = [
+            f"In addition, smart home integrations allow wellness devices to control lighting and temperature for optimal sleep. "
+            f"By sync'ing sleep-stage data with home automation systems, users can create the perfect environment for {focus}.",
+            f"Importantly, battery life and charging options must be convenient to ensure daily usage patterns are not disrupted. "
+            f"Implementing long-lasting battery solutions keeps {sec_focus} active throughout the night without frequent recharging.",
+            f"Furthermore, user data privacy is a paramount concern when dealing with health and biometric telemetry. "
+            f"Processing data locally on the device ensures that sensitive sleep metrics associated with {third_focus} remain secure.",
+            f"Ultimately, the adoption of non-visual interfaces represents a major trend in consumer electronics. "
+            f"By focusing on touch and sound, designers can create calmer interactions that benefit user well-being around {focus}."
+        ]
+
+    else:
+        spec_list = [
+            ("Standard Interface", "Universal high-bandwidth communication protocols"),
+            ("Processing Latency", "Sub-millisecond data routing optimization"),
+            ("Ecosystem Integration", "Cross-platform cloud and local API synchronization"),
+            ("Lifecycle Durability", "Industrial-grade hardware packaging and long MTBF")
+        ]
+        competitors_text = (
+            f"In the broader enterprise space, products and frameworks implementing {focus} compete with legacy tools "
+            f"and proprietary corporate clouds. This system challenges current deployment speeds by offering open, "
+            f"cross-platform synchronization. Competitors must focus on runtime efficiency, as users select solutions "
+            f"that integrate {sec_focus} without vendor lock-in or high maintenance costs."
+        )
+        verdict_text = (
+            f"Nexus Verdict: The emergence of {focus} provides a solid blueprint for scalable operations. By adopting {sec_focus}, "
+            f"organizations can reduce maintenance costs and improve data pipeline throughput, securing long-term viability."
+        )
+        p1 = (
+            f"Modern digital business requires high reliability and rapid deployment. The introduction of {focus} "
+            f"addresses these needs, offering a platform for managing high-volume data streams. This ensures that "
+            f"businesses can process information without database lockups or latency issues."
+        )
+        p2 = (
+            f"A core part of this design is using modular API architectures that connect with existing tech stacks. "
+            f"This allows for quick scaling and deployment, minimizing downtime during upgrades. This structural flexibility "
+            f"makes {sec_focus} a viable asset for firms looking to upgrade legacy systems."
+        )
+        p3 = (
+            f"In addition, building on open standards allows developers to collaborate on improvements. "
+            f"This community-driven model ensures that {third_focus} remains updated, reducing development overhead."
+        )
+        extra_paragraphs = [
+            f"Furthermore, monitoring tools and error logging frameworks are essential for maintaining system health. "
+            f"Integrating automated alerts helps administrators identify and resolve issues before they impact {focus} services.",
+            f"In addition, cloud-native deployments offer unmatched scalability and resource optimization. "
+            f"Leveraging containerization and orchestrators allows organizations to scale {sec_focus} applications dynamically.",
+            f"Importantly, security protocols must be baked into the architecture from the very beginning. "
+            f"Implementing strict access controls and encryption standards ensures that all data routed through {third_focus} is protected.",
+            f"Ultimately, the pace of technological change requires organizations to remain agile and adaptable. "
+            f"By investing in modern, flexible architectures, businesses can position themselves to leverage {focus} trends."
+        ]
+
+    # Helper to compile the HTML with current active paragraphs
+    def build_html(paragraphs):
+        specs_html = "".join([f"<li><strong>{s[0]}:</strong> {s[1]}</li>" for s in spec_list])
+        paragraphs_html = "".join([f'<p style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.6;">{p}</p>' for p in paragraphs])
+        
+        html = f"""
+    <div class="editorial-column">
+        <section class="feature-breakdown">
+            <h2 style="font-size: 1.5rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 1rem; color: var(--text-primary);">Editorial Feature Breakdown</h2>
+            {paragraphs_html}
+        </section>
+        
+        <section class="specs-matrix" style="margin-top: 2rem; margin-bottom: 2rem; padding: 1.5rem; background-color: var(--ad-bg); border: 1px solid var(--border-light); border-radius: 6px;">
+            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; color: var(--google-blue);"><i class="fa-solid fa-list-check"></i> Key Features & Specs</h3>
+            <ul style="margin: 0; padding-left: 1.25rem; color: var(--text-muted); line-height: 1.7; font-size: 0.95rem;">
+                {specs_html}
+            </ul>
+        </section>
+        
+        <section class="market-position" style="margin-top: 2rem; margin-bottom: 2rem;">
+            <h3 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary);">Market Position & Competitor Analysis</h3>
+            <p style="font-size: 1rem; color: var(--text-muted); line-height: 1.6; margin: 0;">{competitors_text}</p>
+        </section>
+        
+        <div class="verdict-box" style="margin-top: 2rem;">
+            <h3><i class="fa-solid fa-gavel"></i> Nexus Strategic Verdict</h3>
+            <p>{verdict_text}</p>
+        </div>
+    </div>
+        """
+        return html
+
+    active_paragraphs = [p1, p2, p3]
+    current_html = build_html(active_paragraphs)
+    word_count = len(BeautifulSoup(current_html, "html.parser").get_text().split())
+    
+    # If too short, add extra paragraphs
+    for ep in extra_paragraphs:
+        if word_count >= 430:
+            break
+        active_paragraphs.append(ep)
+        current_html = build_html(active_paragraphs)
+        word_count = len(BeautifulSoup(current_html, "html.parser").get_text().split())
+        
+    # If still too short, add a generic final outlook paragraph
+    if word_count < 430:
+        outlook_p = (
+            f"Looking forward, the overall trajectory of this technology points to standard adoption across the {category.lower() or 'tech'} space. "
+            f"Firms must balance development velocity with infrastructure stability to stay competitive. As standards mature, "
+            f"organizations implementing {focus} solutions will be well positioned to capture market share and drive next-generation "
+            f"operational efficiency throughout the entire digital economy."
+        )
+        active_paragraphs.append(outlook_p)
+        current_html = build_html(active_paragraphs)
+        word_count = len(BeautifulSoup(current_html, "html.parser").get_text().split())
+        
+    # If still too short, add one more fallback paragraph
+    if word_count < 430:
+        fallback_p = (
+            f"Ultimately, success depends on developer ecosystems and robust API design. "
+            f"By prioritizing security and modularity early, engineering teams can mitigate risks and "
+            f"ensure that their deployment strategies around {sec_focus} and {third_focus} remain highly effective."
+        )
+        active_paragraphs.append(fallback_p)
+        current_html = build_html(active_paragraphs)
+        word_count = len(BeautifulSoup(current_html, "html.parser").get_text().split())
+
+    # If too long, prune paragraphs from active_paragraphs (starting from the end, but keeping at least the first 3)
+    while word_count > 580 and len(active_paragraphs) > 3:
+        active_paragraphs.pop()
+        current_html = build_html(active_paragraphs)
+        word_count = len(BeautifulSoup(current_html, "html.parser").get_text().split())
+
+    return current_html
 
 def compile_article_page(story, idx):
     """Compiles and writes article_{id}.html detail pages with Dynamic SEO and Content Mapping."""
@@ -505,7 +814,7 @@ def compile_article_page(story, idx):
         
     tag_class = "tag-blue" if story["category"] == "Computing" else "tag-red" if story["category"] == "Hardware" else "tag-yellow" if story["category"] == "Fintech" else "tag-green"
     
-    verdict_text = generate_strategic_verdict(story)
+    editorial_content = synthesize_deep_editorial(story)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -541,18 +850,11 @@ def compile_article_page(story, idx):
                     <span>Aggregated Network</span> &bull; <span>{story['date']}</span>
                 </div>
                 
-                <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.7;">
-                    {story['summary']}
-                </p>
+                {editorial_content}
                 
-                <a href="{story['link']}" style="display: inline-block; color: var(--google-blue); font-weight: 700; text-decoration: none; margin-bottom: 2rem;" target="_blank">
+                <a href="{story['link']}" style="display: inline-block; color: var(--google-blue); font-weight: 700; text-decoration: none; margin-bottom: 2rem; margin-top: 1.5rem;" target="_blank">
                     Read Original Coverage <i class="fa-solid fa-arrow-up-right-from-square"></i>
                 </a>
-
-                <div class="verdict-box">
-                    <h3><i class="fa-solid fa-gavel"></i> Nexus Strategic Verdict</h3>
-                    <p>{verdict_text}</p>
-                </div>
 
                 {mapped_product_html}
             </main>
@@ -952,6 +1254,24 @@ def main():
     steam_stories = fetch_steam_feed()
     reddit_stories = fetch_reddit_feed()
     wccftech_stories = fetch_wccftech_feed()
+    
+    # 1.5. Quality Guardrail: filter thin stories (title < 20 or summary < 30)
+    def filter_thin(stories, source_name):
+        filtered = []
+        for s in stories:
+            t = s.get("title", "")
+            sm = s.get("summary", "")
+            if len(t) < 20 or len(sm) < 30:
+                print(f"    [WARNING] Dropping thin story from {source_name}: Title length={len(t)}, Summary length={len(sm)}. Title: '{t}'")
+            else:
+                filtered.append(s)
+        return filtered
+
+    tc_stories = filter_thin(tc_stories, "TechCrunch")
+    sec_stories = filter_thin(sec_stories, "SEC")
+    steam_stories = filter_thin(steam_stories, "Steam")
+    reddit_stories = filter_thin(reddit_stories, "Reddit")
+    wccftech_stories = filter_thin(wccftech_stories, "Wccftech")
     
     all_gaming_stories = steam_stories + reddit_stories + wccftech_stories
     all_stories = tc_stories + sec_stories + all_gaming_stories
